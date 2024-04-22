@@ -35,13 +35,13 @@ pub enum MsgCode {
 }
 
 /// Common API for message types implementing OpenFlow Message Codes (see `MsgCode` enum).
-pub trait MessageType {
+pub trait MessageType<T> {
     /// Return the byte-size of a message.
-    fn size_of(&Self) -> usize;
+    fn size_of(msg: &T) -> usize;
     /// Parse a buffer into a message.
-    fn parse(buf: &[u8]) -> Self;
+    fn parse(buf: &[u8]) -> T;
     /// Marshal a message into a `u8` buffer.
-    fn marshal(Self, &mut Vec<u8>);
+    fn marshal(en: T, buf: &mut Vec<u8>);
 }
 
 pub struct Mask<T> {
@@ -719,7 +719,7 @@ pub struct SwitchFeatures {
 #[repr(packed)]
 struct OfpSwitchFeatures(u64, u32, u8, [u8; 3], u32, u32);
 
-impl MessageType for SwitchFeatures {
+impl MessageType<SwitchFeatures> for SwitchFeatures {
     fn size_of(sf: &SwitchFeatures) -> usize {
         let pds: usize = sf.ports.iter().map(|pd| PortDesc::size_of(pd)).sum();
         size_of::<OfpSwitchFeatures>() + pds
@@ -826,7 +826,7 @@ impl FlowMod {
     }
 }
 
-impl MessageType for FlowMod {
+impl MessageType<FlowMod> for FlowMod {
     fn size_of(msg: &FlowMod) -> usize {
         Pattern::size_of(&msg.pattern) + size_of::<OfpFlowMod>() +
         Action::size_of_sequence(&msg.actions)
@@ -939,7 +939,7 @@ pub struct PacketIn {
 #[repr(packed)]
 struct OfpPacketIn(i32, u16, u16, u8, u8);
 
-impl MessageType for PacketIn {
+impl MessageType<PacketIn> for PacketIn {
     fn size_of(pi: &PacketIn) -> usize {
         size_of::<OfpPacketIn>() + Payload::size_of(&pi.input_payload)
     }
@@ -990,7 +990,7 @@ pub struct PacketOut {
 #[repr(packed)]
 struct OfpPacketOut(u32, u16, u16);
 
-impl MessageType for PacketOut {
+impl MessageType<PacketOut> for PacketOut {
     fn size_of(po: &PacketOut) -> usize {
         size_of::<OfpPacketOut>() + Action::size_of_sequence(&po.apply_actions) +
         Payload::size_of(&po.output_payload)
@@ -1066,7 +1066,7 @@ pub struct FlowRemoved {
 #[repr(packed)]
 struct OfpFlowRemoved(u64, u16, u8, u8, u32, u32, u16, u16, u64, u64);
 
-impl MessageType for FlowRemoved {
+impl MessageType<FlowRemoved> for FlowRemoved {
     fn size_of(f: &FlowRemoved) -> usize {
         Pattern::size_of(&f.pattern) + size_of::<OfpFlowRemoved>()
     }
@@ -1277,7 +1277,7 @@ pub struct PortStatus {
     pub desc: PortDesc,
 }
 
-impl MessageType for PortStatus {
+impl MessageType<PortStatus> for PortStatus {
     fn size_of(_: &PortStatus) -> usize {
         size_of::<PortReason>() + size_of::<OfpPhyPort>()
     }
@@ -1383,7 +1383,7 @@ pub enum Error {
 #[repr(packed)]
 struct OfpErrorMsg(u16, u16);
 
-impl MessageType for Error {
+impl MessageType<Error> for Error {
     fn size_of(err: &Error) -> usize {
         match *err {
             Error::Error(_, ref body) => size_of::<OfpErrorMsg>() + body.len(),
